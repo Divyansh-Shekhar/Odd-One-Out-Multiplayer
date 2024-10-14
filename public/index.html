@@ -32,9 +32,9 @@
     <h2 id="resultMessage"></h2>
     <div id="playerScores"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        const socket = io(/server.js);
         let playerName = prompt("Enter your name:") || "Player";
 
         // Send player name to server

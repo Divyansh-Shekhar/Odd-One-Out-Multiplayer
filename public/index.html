@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odd One Out! - Multiplayer</title>
+    <style>
+        body {
+            background-color: #a2001a;
+        }
+        button {
+            width: 50px;
+            height: 50px;
+            border: 5px black solid;
+            margin: 0;
+            font-size: 18px;
+        }
+        #playerScores {
+            margin-top: 20px;
+            font-size: 20px;
+            color: white;
+        }
+        fieldset {
+            width: 300px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Select the odd one out!</h1>
+    <div id="buttonGrid"></div>
+    <h2 id="resultMessage"></h2>
+    <div id="playerScores"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let playerName = prompt("Enter your name:") || "Player";
+
+        // Send player name to server
+        socket.emit('join', playerName);
+
+        // Rest of the game logic...
+        let baitColor;
+        let thebait;
+
+        // Initialize player score display
+        const playerScoresDisplay = document.getElementById('playerScores');
+
+        function generate() {
+            socket.emit('newGame');
+        }
+
+        function checkColor(button) {
+            const buttonColor = button.style.backgroundColor;
+
+            if (buttonColor === thebait.style.backgroundColor) {
+                socket.emit('guess', { playerName, correct: true });
+            } else {
+                socket.emit('guess', { playerName, correct: false });
+                button.innerHTML = "✘";
+                setTimeout(function() { button.innerHTML = " "; }, 2000);
+            }
+        }
+
+        socket.on('newGame', ({ baitColor, baitButton, baseColor }) => {
+            const buttonGrid = document.getElementById("buttonGrid");
+            buttonGrid.innerHTML = ""; // Clear previous buttons
+            const colorButtons = Array.from({ length: 28 }, (_, i) => {
+                const button = document.createElement("button");
+                button.id = `color${i + 1}`;
+                button.onclick = () => checkColor(button);
+                button.innerHTML = "  ";
+                buttonGrid.appendChild(button);
+
+                // Add a line break after every 7 buttons
+                if ((i + 1) % 7 === 0) {
+                    buttonGrid.appendChild(document.createElement("br"));
+                }
+
+                // Set button colors
+                if (i === baitButton) {
+                    button.style.backgroundColor = baitColor;
+                    thebait = button; // Update the thebait reference
+                } else {
+                    button.style.backgroundColor = baseColor;
+                }
+
+                return button;
+            });
+        });
+
+        socket.on('guess', ({ playerName, correct }) => {
+            const resultMessage = document.getElementById("resultMessage");
+            if (correct) {
+                resultMessage.innerText = `${playerName} guessed it correctly!`;
+                thebait.innerHTML = "✔";
+                document.querySelectorAll('button').forEach(button => button.style.border = "0");
+                setTimeout(() => {
+                    resultMessage.innerText = "";
+                    thebait.innerHTML = "  ";
+                    document.querySelectorAll('button').forEach(button => button.style.border = "5px black solid");
+                    generate();
+                }, 2000);
+            } else {
+                resultMessage.innerText = `${playerName} guessed incorrectly!`;
+            }
+        });
+
+        // Receive updated scores from the server
+        socket.on('scoreUpdate', (scores) => {
+            playerScoresDisplay.innerHTML = ""; // Clear previous scores
+            for (const player in scores) {
+                playerScoresDisplay.innerHTML += `${player}: ${scores[player]}<br>`;
+            }
+        });
+
+        // Initial game generation
+        generate();
+    </script>
+</body>
+</html>
